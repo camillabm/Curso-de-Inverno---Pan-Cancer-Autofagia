@@ -2,12 +2,14 @@
 ### Pan comparisons ###
 #######################
 
+#Install libraries
+install.packages("dplyr")
 library(dplyr)
 
-# UMAP
-install.packages("umap")   # Método mais simples
-install.packages("uwot")   # Alternativa mais eficiente para grandes datasets
-install.packages("ggplot2")  # Para visualização
+### UMAP ###
+install.packages("umap")   
+install.packages("uwot")   
+install.packages("ggplot2")  
 
 library(umap)
 library(uwot)
@@ -51,30 +53,30 @@ metadata_combined <- rbind(metadata_gbm_f, metadata_brca_f, metadata_luad_f, met
 
 metadata_combined <- metadata_combined[colnames(expr_combined), ]
 
-all(colnames(expr_combined) == rownames(metadata_combined))  # Should return TRUE
+all(colnames(expr_combined) == rownames(metadata_combined))  #Should return TRUE
 
 library(sva)
 expr_combined_corrected <- ComBat(dat = expr_combined, batch = metadata_combined$Batch)
 
-set.seed(42)  # Para reprodutibilidade
+set.seed(42)  
 
 umap_result <- umap(
-  t(expr_combined_corrected),   # Matriz de expressão (genes x amostras)
-  n_neighbors = 10,  # Ajusta o número de vizinhos (valores menores = mais locais, valores maiores = mais globais)
-  min_dist = 0.00001,  # Controla a dispersão dos pontos (menor = clusters mais compactos, maior = mais espalhado)
-  spread =  2,  # Controla a separação dos grupos
-  metric = "correlation",  # Pode testar "euclidean", "correlation" ou "cosine"
-  n_components = 2,  # Número de dimensões do UMAP
+  t(expr_combined_corrected), 
+  n_neighbors = 10,  
+  min_dist = 0.00001,  
+  spread =  2,  
+  metric = "correlation",  
+  n_components = 2,  
   learning_rate = 0.1,
-  fast_sgd = TRUE,  # Torna o cálculo mais rápido
-  verbose = TRUE  # Mostra informações durante o processo
+  fast_sgd = TRUE,  
+  verbose = TRUE  
 )
 
 umap_df <- data.frame(
   UMAP1 = umap_result[,1],
   UMAP2 = umap_result[,2],  
   Condition = metadata_coad$condition,
-  Batch = metadata_combined$Batch  # Para verificar efeito do batch
+  Batch = metadata_combined$Batch  
 )
 
   # Basic Plot
@@ -91,7 +93,6 @@ custom_colors <- c(
 UMAP <- ggplot(umap_df, aes(x = UMAP1, y = UMAP2, color = Batch)) +
   geom_point(size = 2, alpha = 0.7) +  # Pontos maiores e mais suaves
   scale_color_manual(values = custom_colors) +  # Aplicar as cores definidas
-  theme_minimal(base_family = "Arial") +  # Fonte Arial para remover serifas
   theme(
     plot.title = element_text(size = 16, face = "bold"),
     legend.title = element_text(size = 12),
@@ -104,7 +105,7 @@ UMAP <- ggplot(umap_df, aes(x = UMAP1, y = UMAP2, color = Batch)) +
 
 ggsave("2.0/Expression Pan/Results/figures/UMAP_pan.png", plot = UMAP, width = 8, height = 6, dpi = 300, bg = "white")
 
-# GBM Plot
+  # GBM Plot
 umap_df <- as.data.frame(umap_result)
 colnames(umap_df) <- c("UMAP1", "UMAP2")
 umap_df$Batch <- metadata_combined$Batch
@@ -128,7 +129,7 @@ UMAP <- ggplot() +
 
 ggsave("2.0/Expression Pan/Results/figures/UMAP_pan_gbm.png", plot = UMAP, width = 8, height = 6, dpi = 300, bg = "white")
 
-# DEGs comparison 
+### DEGs comparison ###
   # Data loading
 df_gbm <- read.csv("2.0/Expression Pan/Results/tables/result_gbmR_ARG.csv")
 df_brca <- read.csv("2.0/Expression Pan/Results/tables/result_brcaR_ARG.csv")
@@ -241,80 +242,7 @@ head(sign_consistency_results)
 genes_only_in_gbm <- hgnc_gbm[!hgnc_gbm %in% union(hgnc_brca, union(hgnc_luad, hgnc_coad))]
 print(genes_only_in_gbm)
 
-# RadarChart
-
-  # Libraries
-library(fmsb)
-library(dplyr)
-library(tidyr)
-
-df_list <- list(GBM = df_gbm, BRCA = df_brca, LUAD = df_luad, COAD = df_coad)
-
-# Criar um dataframe vazio para armazenar os valores de log2FoldChange
-data_radar <- data.frame(Gene = unique_values_no_sign)
-
-# Preencher os valores de log2FoldChange para cada projeto
-for (name in names(df_list)) {
-  df <- df_list[[name]]
-  
-  # Filtrar apenas genes que estão em unique_values_no_sign
-  DEGs <- df %>% filter(hgnc_symbol %in% unique_values_no_sign) %>%
-    select(hgnc_symbol, log2FoldChange)
-  
-  # Renomear colunas para mesclar corretamente
-  colnames(DEGs) <- c("Gene", name)
-  
-  # Unir ao dataframe principal, preenchendo valores ausentes com 0
-  data_radar <- full_join(data_radar, DEGs, by = "Gene")
-}
-
-# Substituir NAs por 0
-data_radar[is.na(data_radar)] <- 0
-
-# Remover a coluna de genes e transpor a matriz
-rownames(data_radar) <- data_radar$Gene
-data_radar <- data_radar %>% select(-Gene) %>% as.data.frame()
-data_radar <- t(data_radar)
-
-# Definir valores máximos e mínimos manuais
-manual_max <- 8
-manual_min <- -8
-
-# Adicionar linhas de referência para os limites do radar chart
-data_radar <- rbind(rep(manual_max, ncol(data_radar)), 
-                    rep(manual_min, ncol(data_radar)), 
-                    data_radar)
-
-# Converter para dataframe
-data_radar <- as.data.frame(data_radar)
-
-# Criar imagem PNG
-png("radarDEGs_gbmR.png", width = 2500, height = 2500, res = 150)
-
-# Definir a fonte para Arial
-par(family = "Arial")
-
-# Plotar o Radar Chart
-radarchart(data_radar, axistype = 1, 
-           pcol = c("#9B59B6", "#4682B4", "#D8B", "#B5EAD7"), 
-           pfcol = c(rgb(155/255, 89/255, 182/255, 0.3),  # Roxo
-                     rgb(70/255, 130/255, 180/255, 0.3), # Azul
-                     rgb(221/255, 136/255, 187/255, 0.3), # Rosa
-                     rgb(181/255, 234/255, 215/255, 0.3)), # Verde pastel
-           plwd = 2, plty = 1,  
-           cglcol = "grey", cglty = 1, 
-           cglwd = 2, # Aumenta a espessura da grade
-           caxislabels = seq(floor(manual_min), ceiling(manual_max), by = 2),
-           vlcex = 1, # Diminui o tamanho das labels dos genes
-           seg = 8) # Aumenta o número de divisões na grade para melhor leitura
-
-# Adicionar título ao gráfico
-title("Radar Chart DEGs - Comparação entre Projetos")
-
-# Fechar o dispositivo gráfico
-dev.off()
-
-# DEGs GO
+### DEGs GO ###
 
   # Libraries
 BiocManager::install("clusterProfiler")
