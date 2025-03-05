@@ -318,11 +318,12 @@ chord_data_alluvial <- data.frame(
   Gene = unlist(genes_hgnc))
 
 ggplot(chord_data_alluvial, aes(axis1 = GO_Term, axis2 = Gene, y = 1)) +
-  geom_alluvium(aes(fill = GO_Term)) +
+  geom_alluvium(aes(fill = GO_Term), alpha = 0.8) +
   geom_stratum(aes(fill = GO_Term)) +
   scale_x_discrete(limits = c("GO_Term", "Gene"), expand = c(0.15, 0.15)) +
-  scale_fill_viridis_d() +  # Definir uma paleta de cores bonita
+  scale_fill_viridis_d(option = "plasma") +  # Escolha "magma", "inferno", etc.
   theme_void() +
   geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme_minimal() +
   theme(legend.position = "none")  
 
