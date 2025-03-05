@@ -308,6 +308,10 @@ library(dplyr)
 go_df <- as.data.frame(GO_result_bp)
 
 top_GO_terms <- head(go_df[order(go_df$pvalue), ], 6)  
+genes_in_GO_filtered <- strsplit(top_GO_terms$geneID, "/")
+
+genes_hgnc <- lapply(genes_in_GO_filtered, function(entrez_ids) entrez_to_hgnc(entrez_ids))
+genes_hgnc <- lapply(genes_hgnc, function(x) x[!is.na(x)])  
 
 chord_data_alluvial <- data.frame(
   GO_Term = rep(top_GO_terms$Description, sapply(genes_hgnc, length)),
@@ -321,3 +325,4 @@ ggplot(chord_data_alluvial, aes(axis1 = GO_Term, axis2 = Gene, y = 1)) +
   theme_void() +
   geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
   theme(legend.position = "none")  
+
