@@ -243,7 +243,6 @@ genes_only_in_gbm <- hgnc_gbm[!hgnc_gbm %in% union(hgnc_brca, union(hgnc_luad, h
 print(genes_only_in_gbm)
 
 ### DEGs GO ###
-
   # Libraries
 BiocManager::install("clusterProfiler")
 BiocManager::install("org.Hs.eg.db")
@@ -251,14 +250,40 @@ BiocManager::install("org.Hs.eg.db")
 library (clusterProfiler)
 library (org.Hs.eg.db)
 
+  # Metadata annotation
+intersect_all_no_sign <- Reduce(intersect, list(hgnc_gbm, hgnc_brca, hgnc_luad, hgnc_coad))
+all_other_genes<- unique(c(hgnc_brca, hgnc_luad, hgnc_coad))
+genes_only_in_gbm <- hgnc_gbm[!hgnc_gbm %in% all_other_genes]
+
+hgnc_gbm_df <- as.data.frame(hgnc_gbm)
+
+hgnc_gbm_df$log2FC_signal <- NA  
+hgnc_gbm_df <- merge(hgnc_gbm_df, df_gbm[, c("hgnc_symbol", "log2FoldChange")], 
+                     by.x = "hgnc_gbm", by.y = "hgnc_symbol", all.x = TRUE)
+hgnc_gbm_df$log2FC_signal <- ifelse(hgnc_gbm_df$log2FoldChange > 0, "Positive", "Negative")
+hgnc_gbm_df$log2FoldChange <- NULL
+
+hgnc_gbm_df$GBM <- "Yes"
+hgnc_gbm_df$GBM_exc <- "No"
+hgnc_gbm_df$GBM_exc[hgnc_gbm_df$hgnc_gbm %in% genes_only_in_gbm] <- "Yes"
+hgnc_gbm_df$Intersection <- "No"
+hgnc_gbm_df$Intersection[hgnc_gbm_df$hgnc_gbm %in% intersect_all_no_sign] <- "Yes"
+
+write.csv(hgnc_gbm_df, "2.0/Expression Pan/Results/Tables/chord_GO_pan.csv", row.names = FALSE)
+
   # Function to convert HGNC to Entrez
 hgnc_to_entrez <- function(hgnc_symbols) {
   gene_ids <- bitr(hgnc_symbols, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
   return(gene_ids$ENTREZID)  # Retorna os IDs Entrez
 }
 
-  # Function to GO analysis
-    #Biological Process
+  # Function to convert Entrez to HGNC
+entrez_to_hgnc <- function(entrez_ids) {
+  hgnc_symbols <- mapIds(org.Hs.eg.db, keys = as.character(entrez_ids), column = "SYMBOL", keytype = "ENTREZID", multiVals = "first")
+  return(hgnc_symbols)
+}
+
+  # Function to GO analysis (Biological Process)
 go_analysis_BP <- function(genes) {
   entrez_ids <- hgnc_to_entrez(genes)
   go_results <- enrichGO(entrez_ids, 
@@ -270,72 +295,29 @@ go_analysis_BP <- function(genes) {
   return(go_results)
 }
 
-    #Molecular Function
-go_analysis_MF <- function(genes) {
-  entrez_ids <- hgnc_to_entrez(genes)
-  go_results <- enrichGO(entrez_ids, 
-                         OrgDb = org.Hs.eg.db, 
-                         ont = "MF",   # Você pode escolher BP (Biological Process), MF (Molecular Function), ou CC (Cellular Component)
-                         pAdjustMethod = "BH", # Método de ajuste de p-valor
-                         qvalueCutoff = 0.05)  # Definir o cutoff para significância
-  
-  return(go_results)
-}
+  # GO analysis
+GO_result_bp <- go_analysis_BP(hgnc_gbm_df$hgnc_gbm)
 
-    #Cellular Component
-go_analysis_CC <- function(genes) {
-  entrez_ids <- hgnc_to_entrez(genes)
-  go_results <- enrichGO(entrez_ids, 
-                         OrgDb = org.Hs.eg.db, 
-                         ont = "CC",   # Você pode escolher BP (Biological Process), MF (Molecular Function), ou CC (Cellular Component)
-                         pAdjustMethod = "BH", # Método de ajuste de p-valor
-                         qvalueCutoff = 0.05)  # Definir o cutoff para significância
-  
-  return(go_results)
-}
+  # Chord plot
+install.packages("ggalluvial")
 
-  # Positive DEGs
-df_gbm_pos <- df_gbm %>% filter(log2FoldChange > 0)
-df_brca_pos <- df_brca %>% filter(log2FoldChange > 0)
-df_luad_pos <- df_luad %>% filter(log2FoldChange > 0)
-df_coad_pos <- df_coad %>% filter(log2FoldChange > 0)
+library(ggalluvial)
+library(ggplot2)
+library(dplyr)
 
-df_gbm_pos <- df_gbm_pos$hgnc_symbol
-df_brca_pos <- df_brca_pos$hgnc_symbol
-df_luad_pos <- df_luad_pos$hgnc_symbol
-df_coad_pos <- df_coad_pos$hgnc_symbol
+go_df <- as.data.frame(GO_result_bp)
 
-intersect_all_no_sign_pos <- Reduce(intersect, list(df_gbm_pos, df_brca_pos, df_luad_pos, df_coad_pos))
-all_other_genes_pos <- unique(c(df_brca_pos, df_luad_pos, df_coad_pos))
-genes_only_in_gbm_pos <- df_gbm_pos[!df_gbm_pos %in% all_other_genes_pos]
+top_GO_terms <- head(go_df[order(go_df$pvalue), ], 6)  
 
-intersect_all_no_sign_pos<- go_analysis_CC(intersect_all_no_sign_pos)
-df_gbm_pos <- go_analysis_CC(df_gbm_pos)
-genes_only_in_gbm_pos <- go_analysis_CC(genes_only_in_gbm_pos)
+chord_data_alluvial <- data.frame(
+  GO_Term = rep(top_GO_terms$Description, sapply(genes_hgnc, length)),
+  Gene = unlist(genes_hgnc))
 
-barplot(intersect_all_no_sign_pos, showCategory = 5)
-barplot(df_gbm_pos, showCategory = 5)
-barplot(genes_only_in_gbm_pos, showCategory = 5)
-
-  # Negative DEGs
-df_gbm_neg <- df_gbm %>% filter(log2FoldChange < 0)
-df_brca_neg <- df_brca %>% filter(log2FoldChange < 0)
-df_luad_neg <- df_luad %>% filter(log2FoldChange < 0)
-df_coad_neg <- df_coad %>% filter(log2FoldChange < 0)
-
-df_gbm_neg <- df_gbm_neg$hgnc_symbol
-df_brca_neg <- df_brca_neg$hgnc_symbol
-df_luad_neg <- df_luad_neg$hgnc_symbol
-df_coad_neg <- df_coad_neg$hgnc_symbol
-
-intersect_all_no_sign_neg <- Reduce(intersect, list(df_gbm_neg, df_brca_neg, df_luad_neg, df_coad_neg))
-all_other_genes_neg <- unique(c(df_brca_neg, df_luad_neg, df_coad_neg))
-genes_only_in_gbm_neg <- df_gbm_neg[!df_gbm_neg %in% all_other_genes_neg]
-
-intersect_all_no_sign_neg <- go_analysis_BP(intersect_all_no_sign_neg)
-df_gbm_neg <- go_analysis_BP(df_gbm_neg)
-genes_only_in_gbm_neg <- go_analysis_BP(genes_only_in_gbm_neg)
-
-barplot(intersect_all_no_sign_neg, showCategory = 5)
-barplot(df_gbm_neg, showCategory = 5)
-barplot(genes_only_in_gbm_neg, showCategory = 5)
+ggplot(chord_data_alluvial, aes(axis1 = GO_Term, axis2 = Gene, y = 1)) +
+  geom_alluvium(aes(fill = GO_Term)) +
+  geom_stratum(aes(fill = GO_Term)) +
+  scale_x_discrete(limits = c("GO_Term", "Gene"), expand = c(0.15, 0.15)) +
+  scale_fill_viridis_d() +  # Definir uma paleta de cores bonita
+  theme_void() +
+  geom_text(stat = "stratum", aes(label = after_stat(stratum))) +
+  theme(legend.position = "none")  
