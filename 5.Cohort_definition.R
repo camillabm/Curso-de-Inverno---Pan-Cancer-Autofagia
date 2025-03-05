@@ -22,8 +22,8 @@ gbm_normal_cohort <- read.csv("2.0/Expressão Pan/Expression/total/matrix_gbmR_n
 md_gbm_normal_cohort <- read.csv("2.0/Expressão Pan/Metadata/total/metadata_gbmR_normal.csv")
 
   # Normal samples selection
-cortex_samples <- 185 
-frontal_cortex_samples <- 184 #This will provide 367 normal samples 
+cortex_samples <- 184 
+frontal_cortex_samples <- 183 #This will provide 367 normal samples 
 
 md_gbm_cortex <- md_gbm_normal_cohort[md_gbm_normal_cohort$tissue_or_organ_of_origin == "Brain cortex", ]
 cortex_samples_sel <- sample(md_gbm_cortex$barcode, cortex_samples)
@@ -75,7 +75,7 @@ matrix_comb <- matrix_comb[rownames(gbm_cohort), ] #Reorder the rawnames to matc
 matrix_gbmR <- cbind(matrix_comb, gbm_cohort)
 metadata_gbmR <- rbind(metadata_comb, md_gbm_cohort)
 
-  #Saving tables
+  # Saving tables
 write.csv(matrix_gbmR, "2.0/Expressão Pan/Expression/cohort/matrix_gbmR_comb.csv", row.names = TRUE) #expression matrix
 write.csv(metadata_gbmR, "2.0/Expressão Pan/Metadata/cohort/metadata_gbmR_comb.csv", row.names = TRUE) #metadata
 
@@ -143,7 +143,7 @@ metadata_brcaR <- rbind(md_breast_sel, md_brca_cohort_sel)
 write.csv(matrix_brcaR, "2.0/Expressão Pan/Expression/cohort/matrix_brcaR_comb.csv", row.names = TRUE) #expression matrix
 write.csv(metadata_brcaR, "2.0/Expressão Pan/Metadata/cohort/metadata_brcaR_comb.csv", row.names = TRUE) #metadata
 
-### LUAD###
+### LUAD ###
 luad_cohort <- read.csv("2.0/Expressão Pan/Expression/total/expression_luad.csv", row.names = 1) #Previous expression table (genes x samples)
 md_luad_cohort <- read.csv("2.0/Expressão Pan/Metadata/total/metadata_luadR_f.csv") #Metadata table after manual curation (in .csv) (sample x metadata)
 
@@ -248,7 +248,7 @@ coad_samples_sel <- sample(md_coad_cohort$barcode, colon_samples)
 coad_cohort <- coad_cohort[, colnames(coad_cohort) %in% coad_samples_sel]
 md_coad_cohort_sel <- md_coad_cohort[md_coad_cohort$barcode %in% colnames(coad_cohort), ] #Should rest only 367 variables
 
-# Data combining
+  # Data combining
 matrix_comb <- SummarizedExperiment(
   assays = list(counts = as.matrix(matrix_comb)),
   rowData = DataFrame(geneID = rownames(matrix_comb))
@@ -264,7 +264,7 @@ genes_comum <- intersect(genes_normal, genes_tumor)
 coad_cohort <- coad_cohort[rownames(coad_cohort) %in% genes_comum, ] #Tumor
 matrix_comb <- matrix_comb[rownames(matrix_comb) %in% genes_comum, ] #Normal
 
-# Filtering by autophagy genes 
+  # Filtering by autophagy genes 
 autophagy_genes <- read.csv("2.0/ARGs/ARG_v1_rawcounts.csv") 
 head(autophagy_genes)
 ensembl_genes <- autophagy_genes$ensembl_gene_id  #Columns in gene table with ensembl ID
@@ -272,12 +272,12 @@ ensembl_genes <- autophagy_genes$ensembl_gene_id  #Columns in gene table with en
 coad_cohort  <- coad_cohort [rownames(coad_cohort ) %in% ensembl_genes, ] #dds filtered by ensembl ID
 matrix_comb  <- matrix_comb[rownames(matrix_comb) %in% ensembl_genes, ] #dds filtered by ensembl ID
 
-# Binding tables
+  # Binding tables
 matrix_comb <- matrix_comb[rownames(coad_cohort), ] #Reorder the rawnames to match
 matrix_coadR <- cbind(matrix_comb, coad_cohort)
 metadata_coadR <- rbind(metadata_comb, md_coad_cohort_sel)
 
-#Saving tables
+  # Saving tables
 write.csv(matrix_coadR, "2.0/Expressão Pan/Expression/cohort/matrix_coadR_comb.csv", row.names = TRUE) #expression matrix
 write.csv(metadata_coadR, "2.0/Expressão Pan/Metadata/cohort/metadata_coadR_comb.csv", row.names = TRUE) #metadata
 
