@@ -25,7 +25,7 @@ GDCdownload(query = query_rna_gbm, method = "api", files.per.chunk = 1) #se já 
 data_gbmR <- GDCprepare(query_rna_gbm) 
 
   #BRCA
-BRCA <- c("TCGA-BRCA") #coloque aqui os TCGA escolhidos
+BRCA <- c("TCGA-BRCA") 
 query_rna_brca <- GDCquery(
   project = BRCA,
   experimental.strategy = "RNA-Seq",
@@ -38,7 +38,7 @@ GDCdownload(query = query_rna_brca, method = "api", files.per.chunk = 1) #se já
 data_brcaR <- GDCprepare(query_rna_brca) 
 
   #LUAD
-LUAD <- c("TCGA-LUAD") #coloque aqui os TCGA escolhidos
+LUAD <- c("TCGA-LUAD") 
 query_rna_luad <- GDCquery(
   project = LUAD,
   experimental.strategy = "RNA-Seq",
@@ -51,7 +51,7 @@ GDCdownload(query = query_rna_luad, method = "api", files.per.chunk = 1) #se já
 data_luadR <- GDCprepare(query_rna_luad) 
 
 #COAD
-COAD <- c("TCGA-COAD") #coloque aqui os TCGA escolhidos
+COAD <- c("TCGA-COAD") 
 query_rna_coad <- GDCquery(
   project = COAD,
   experimental.strategy = "RNA-Seq",
